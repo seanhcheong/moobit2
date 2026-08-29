@@ -59,9 +59,13 @@ rescue StandardError
   nil
 end
 
-developer_dir = tool_output('xcode-select -p')
-xcode_version = tool_output('xcodebuild -version')
-ios_sdk = tool_output('xcrun --sdk iphoneos --show-sdk-path')
+# Escape hatch for CI and for verifying the file-registration logic on a non-Mac: registering
+# files in the project needs no Xcode at all, only `pod install` does.
+skip_check = %w[1 true yes].include?(ENV['MOOBIT_SKIP_XCODE_CHECK'].to_s.downcase)
+
+developer_dir = skip_check ? '(check skipped)' : tool_output('xcode-select -p')
+xcode_version = skip_check ? '(check skipped)' : tool_output('xcodebuild -version')
+ios_sdk = skip_check ? '(check skipped)' : tool_output('xcrun --sdk iphoneos --show-sdk-path')
 
 if developer_dir.nil? || xcode_version.to_s.empty? || ios_sdk.to_s.empty?
   warn <<~XCODE

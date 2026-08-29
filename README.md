@@ -38,8 +38,21 @@ npm install
 
 ### iPhone
 
-**You need a Mac with Xcode.** There is no way around that for iOS. You also need a physical
-iPhone — **the iOS Simulator has no camera**, so it cannot run this at all.
+**You need a Mac with Xcode 15.1 or newer** (`xcodebuild -version` to check). There is no way
+around Xcode for iOS. You also need a physical iPhone — **the iOS Simulator has no camera**, so it
+cannot run this at all.
+
+If `xcode-select -p` prints `/Library/Developer/CommandLineTools`, Xcode is installed but not
+active; the standalone Command Line Tools contain no iOS SDK. Fix with:
+
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+sudo xcodebuild -license accept
+xcodebuild -runFirstLaunch
+```
+
+`npm run setup:ios` preflights all of this and tells you exactly what is wrong rather than
+letting `pod install` fail a hundred lines deep inside glog.
 
 ```bash
 bundle install          # once: installs cocoapods + xcodeproj from the Gemfile
@@ -87,7 +100,7 @@ npm run probe:all       # the measurement probes; see "Offline tuning" below
 
 | Package | Pinned | Why |
 | --- | --- | --- |
-| `react-native` | 0.81.6 | Contemporaneous with the rest of this stack. |
+| `react-native` | **0.80.3** | **Not 0.81.x.** RN 0.81 hard-requires **Xcode >= 16.1**, which needs a recent macOS; 0.80.3 requires only Xcode 15.1. It is also *more* contemporaneous with VisionCamera 4.7.3 and worklets-core 1.6.3 than 0.81 was. Nothing here uses a 0.81-only API. |
 | `react-native-vision-camera` | 4.7.3 | **Not 5.x.** VC5 requires `react-native-nitro-modules`/`nitro-image` and has a reworked frame-processor API with far less documentation. |
 | `react-native-worklets-core` | 1.6.3 | What VC4 frame processors use. |
 | `react-native-svg` | 15.15.5 | Overlay. **Not Skia** — see [Architecture](#architecture). |
