@@ -93,6 +93,13 @@ android {
             keyPassword 'android'
         }
     }
+    // MediaPipe memory-maps the model straight out of the APK's assets. If aapt compresses
+    // the .task file that mapping is impossible and the landmarker fails to initialise at
+    // runtime with an opaque error, so these extensions must stay uncompressed.
+    androidResources {
+        noCompress += ['task', 'tflite', 'bin']
+    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -110,6 +117,15 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    // MediaPipe Tasks Vision — supplies PoseLandmarker plus the GPU delegate.
+    //
+    // NOTE: this version could not be resolved against Google's Maven repo from the machine
+    // this was written on (the network there blocks dl.google.com), so treat it as a starting
+    // point: if Gradle cannot find it, check the newest 0.10.x on
+    // https://maven.google.com/web/index.html#com.google.mediapipe:tasks-vision and bump.
+    // The plugin code only uses long-stable Tasks API surface, so a bump should be a no-op.
+    implementation("com.google.mediapipe:tasks-vision:0.10.14")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

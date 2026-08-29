@@ -32,6 +32,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>The camera watches you exercise so the app can detect squats, push-ups and lunges. Video is processed on-device and never leaves your phone.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UILaunchStoryboardName</key>
@@ -40,11 +42,13 @@
 	<array>
 		<string>arm64</string>
 	</array>
+	<!-- Portrait only, on purpose. The camera is propped on the floor in portrait for the
+	     extra vertical headroom a full standing body needs at 6ft, and every calibration
+	     baseline is captured in that one orientation. Allowing rotation would silently
+	     invalidate a session's baseline mid-set. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>

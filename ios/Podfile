@@ -17,6 +17,14 @@ end
 target 'MoobitRecog' do
   config = use_native_modules!
 
+  # MediaPipe Tasks Vision — supplies PoseLandmarker plus the Metal GPU delegate.
+  #
+  # NOTE: this version could not be resolved against the CocoaPods trunk from the machine this
+  # was written on (its network blocks the spec CDN), so treat it as a starting point. If
+  # `pod install` cannot find it, run `pod search MediaPipeTasksVision` and bump. The plugin
+  # only uses long-stable Tasks API surface, so a bump should be a no-op.
+  pod 'MediaPipeTasksVision', '~> 0.10.14'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.
