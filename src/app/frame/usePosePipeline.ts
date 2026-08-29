@@ -172,6 +172,11 @@ export function usePosePipeline(opts: UsePosePipelineOptions = {}): UsePosePipel
    */
   const clockOffset = useRef<number>(Number.POSITIVE_INFINITY);
 
+  // Held in a ref because the useRunOnJS worklet below is memoised with empty deps: capturing the
+  // callback directly would pin whatever was passed on the first render for the app's lifetime.
+  const onFrameRef = useRef(opts.onFrame);
+  onFrameRef.current = opts.onFrame;
+
   const onFrameJs = useRunOnJS((native: unknown) => {
     const result = native as NativePoseResult;
     const wallNow = Date.now();
@@ -218,7 +223,7 @@ export function usePosePipeline(opts: UsePosePipelineOptions = {}): UsePosePipel
     }
 
     dirty.current = true;
-    opts.onFrame?.(out, result, hopMs);
+    onFrameRef.current?.(out, result, hopMs);
   }, []);
 
   const rotationDegrees = nativeFrame.rotationDegrees;

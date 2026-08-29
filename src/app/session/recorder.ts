@@ -72,6 +72,9 @@ export interface SessionRecorder {
       decimateMs: number;
       framesDropped: number;
     },
+    /** True on the frame a rep completes. Drives the per-rep statistics. */
+    repCompleted: boolean,
+    /** Peak depth of the rep that just completed; NaN otherwise. */
     repPeakDepth: number,
   ): void;
 
@@ -166,7 +169,7 @@ export function createSessionRecorder(opts: RecorderOptions): SessionRecorder {
       return rawLogPath;
     },
 
-    onFrame(event, landmarks, native, repPeakDepth) {
+    onFrame(event, landmarks, native, repCompleted, repPeakDepth) {
       if (cancelled) return;
 
       if (lastLabel !== null && lastLabel !== event.exercise) stats.labelSwitches++;
@@ -178,7 +181,7 @@ export function createSessionRecorder(opts: RecorderOptions): SessionRecorder {
         event.confidence,
         event.depth,
         event.timestamp,
-        false,
+        repCompleted,
         repPeakDepth,
         event.frontLeg,
       );
@@ -233,21 +236,4 @@ export function createSessionRecorder(opts: RecorderOptions): SessionRecorder {
   };
 
   return recorder;
-}
-
-/**
- * Record a completed rep.
- *
- * Separate from `onFrame` because a rep is a rep-level fact and the per-frame accumulator would
- * otherwise need to infer it from a count changing, which is exactly the kind of derived state
- * that goes wrong when a label switches on the same frame a rep completes.
- */
-export function recordRepCompleted(
-  stats: SessionStats,
-  label: string,
-  peakDepth: number,
-  frontLeg: 'left' | 'right' | null,
-): void {
-  stats.repPeakDepths.push(peakDepth);
-  if (label === 'lunge' && frontLeg) stats.frontLegs.push(frontLeg);
 }

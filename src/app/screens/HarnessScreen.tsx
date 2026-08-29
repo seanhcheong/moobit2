@@ -105,6 +105,7 @@ export function HarnessScreen() {
           decimateMs: n.decimateMs ?? 0,
           framesDropped: n.framesDropped ?? 0,
         },
+        out.repCompleted,
         out.repCompleted ? out.event.depth : NaN,
       );
     },

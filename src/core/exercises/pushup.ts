@@ -82,6 +82,8 @@ export const PUSHUP_CONFIG = {
   depthExcursionFrac: 0.347,
 
   // ---- Corroborators -----------------------------------------------------------------------
+  /** Apparent elbow angle at the top of a push-up, in degrees. Measured 165.9. */
+  elbowAngleAtTop: 165.9,
   /** Apparent elbow angle falls this far, in degrees, at full depth. */
   elbowDropAtFullDepth: 34.4,
   /** torso/shoulderWidth falls this far at full depth. */
@@ -258,8 +260,7 @@ export const pushupModule: ExerciseModule<PushupState> = {
 
     // Elbow flexion must accompany the shoulder descent. This is what separates a real push-up
     // from the whole body being lowered with straight arms.
-    const elbowTop = 165.9;
-    const elbowDrop = elbowTop - f.elbowAngle;
+    const elbowDrop = cfg.elbowAngleAtTop - f.elbowAngle;
     if (elbowDrop === elbowDrop) {
       const expected = cfg.elbowDropAtFullDepth * frac;
       sum += nearness(elbowDrop, expected, Math.max(8, expected * cfg.corroborationTolerance + 8));
