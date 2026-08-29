@@ -24,7 +24,11 @@ public class PoseFrameProcessorPlugin: FrameProcessorPlugin {
 
     private let holder = PoseLandmarkerHolder()
 
-    public override init(proxy: VisionCameraProxyHolder, options: [AnyHashable: Any]! = [:]) {
+    // Signature matched against VisionCamera's own header, which declares
+    //   - (instancetype)initWithProxy:(VisionCameraProxyHolder*)proxy
+    //                    withOptions:(NSDictionary* _Nullable)options NS_SWIFT_NAME(init(proxy:options:));
+    // so `options` imports into Swift as an optional dictionary.
+    public override init(proxy: VisionCameraProxyHolder, options: [AnyHashable: Any]?) {
         super.init(proxy: proxy, options: options)
     }
 
@@ -44,7 +48,9 @@ public class PoseFrameProcessorPlugin: FrameProcessorPlugin {
         }
 
         let rotationDegrees = normaliseRotation((arguments?["rotationDegrees"] as? NSNumber)?.intValue ?? 0)
-        let captureMs = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(frame.buffer)) * 1000.0
+        // VisionCamera's `Frame.timestamp` is already the presentation timestamp in milliseconds
+        // (CMTimeGetSeconds(pts) * 1000), so there is no reason to re-derive it from the buffer.
+        let captureMs = frame.timestamp
         let captureUsable = captureMs.isFinite && captureMs > 0
 
         let submitted = holder.submit(

@@ -29,36 +29,58 @@ phone lies **on the floor, ~6 ft in front of you, tilted up, in portrait**, usin
 
 ## Quick start
 
+Everything except the two native plugins is shared, so both apps come from one codebase. Setup is
+one command per platform.
+
 ```bash
 npm install
-npm run model:download        # fetches pose_landmarker_lite.task into both platform bundles
 ```
 
-**iOS needs one manual step the first time.** Xcode does not pick up files added on disk:
+### iPhone
+
+**You need a Mac with Xcode.** There is no way around that for iOS. You also need a physical
+iPhone — **the iOS Simulator has no camera**, so it cannot run this at all.
 
 ```bash
-cd ios && pod install && cd ..
-open ios/MoobitRecog.xcodeproj
+bundle install          # once: installs cocoapods + xcodeproj from the Gemfile
+npm run setup:ios       # downloads the model, registers the native plugin, pod install
+npm run dev             # Metro + the local telemetry server
+npm run ios             # or open ios/MoobitRecog.xcworkspace and hit Run
 ```
 
-Drag `ios/MoobitRecog/pose_landmarker_lite.task` into the **MoobitRecog** target and confirm it
-appears under *Build Phases → Copy Bundle Resources*. Without this the app launches, the camera
-works, and the landmarker fails to initialise.
+For a physical device you must set a signing team once: open
+`ios/MoobitRecog.xcworkspace`, select the **MoobitRecog** target → *Signing & Capabilities* →
+pick your Apple ID under *Team*. A free Apple ID works; the build just expires after 7 days.
 
-Then:
+`npm run setup:ios` exists because creating a file on disk does **not** add it to an Xcode target.
+The three plugin sources and the `.task` model all have to be registered in `project.pbxproj`, and
+without that the app builds, launches, shows a live camera, and the frame processor plugin simply
+never exists. The script does that via the `xcodeproj` gem — the same library CocoaPods uses — so
+it is idempotent and produces a valid project rather than a hand-edited one. Dragging the files
+into Xcode by hand does the same job if you prefer.
+
+There is no bridging header to create. `PoseFrameProcessorPlugin.m` imports the *generated* Swift
+interface header, which Xcode produces automatically. If Xcode offers to make a bridging header,
+declining is correct.
+
+### Android
 
 ```bash
-npm run dev                   # Metro + the local telemetry server together
-npm run android               # or: npm run ios
+npm run setup:android   # just downloads the model; Gradle finds everything else
+npm run dev
+npm run android
 ```
 
-Checks that run without a device:
+Gradle compiles everything under `src/main/java` and picks up `src/main/assets` on its own, so
+Android needs no equivalent of the Xcode step.
+
+### Checks that need no device at all
 
 ```bash
-npm test                      # 107 unit and end-to-end recognition tests
+npm test                # 107 unit and end-to-end recognition tests
 npm run typecheck
 npm run lint
-npm run probe:all             # the measurement probes; see "Offline tuning" below
+npm run probe:all       # the measurement probes; see "Offline tuning" below
 ```
 
 ### Version pinning, and two footguns already defused
