@@ -55,7 +55,7 @@ npm run android               # or: npm run ios
 Checks that run without a device:
 
 ```bash
-npm test                      # 91 unit and end-to-end recognition tests
+npm test                      # 107 unit and end-to-end recognition tests
 npm run typecheck
 npm run lint
 npm run probe:all             # the measurement probes; see "Offline tuning" below
@@ -322,7 +322,40 @@ accumulate across a rep and the label latches at the bottom, so a per-frame wobb
 answer mid-rep. Front-leg labelling and alternation detection both survive `z` being **zeroed
 entirely** and `z` being **40× noisier** than x/y (both are tests).
 
-### 4. Two bugs the adversarial probe caught
+### 4. Squat *style* moves the apparent knee angle 5.4x — and broke the corroborators
+
+The other probes sweep the setup: body height, tilt, distance, noise. `npm run probe:style` sweeps
+the *user*, and it mattered far more.
+
+With the feet planted and the pelvis at a given height, a leg has one degree of freedom left, so
+however far the hips fail to travel backward is forced into the knee travelling forward instead. A
+knee-dominant squat points the thigh almost straight down a head-on camera's view axis, where it
+foreshortens to almost nothing:
+
+| hip setback at full depth | knee travel past ankle | apparent knee flexion |
+| --- | --- | --- |
+| 0.05 m (knee-dominant) | 0.34 m | 29 deg |
+| 0.22 m (typical) | 0.20 m | 134 deg |
+| 0.38 m (hip-dominant) | 0.05 m | 156 deg |
+
+`hipRatio` excursion across that entire range: **0.192 → 0.189, a 1.4% spread**, with 8/8 reps and
+depth correlation 0.94 at every style. The primary-signal choice holds up.
+
+The corroborators did not. They matched each excursion against an expected magnitude calibrated at
+one style, and so scored **0.00 at four of the five styles** — silently dead for essentially every
+real user, and quietly draining the confidence margin that separates a squat from a lunge. Rep
+counts never moved, which is exactly why it went unnoticed.
+
+They now check **direction and a saturating minimum** rather than a matched magnitude: "the knee
+must have flexed by at least ~20 degrees at full depth", which every style satisfies and a
+non-flexing movement does not. Corroboration is now 1.00 at all five styles. The same change was
+applied to the lunge and push-up corroborators for the same reason.
+
+Worth noting what actually rejects a hip hinge: the **depth metric itself**. The hips barely drop
+in a hinge, so `hipRatio` hardly moves and squat depth reads 0. The knee corroborator was never
+what was doing that work.
+
+### 5. Two bugs the adversarial probe caught
 
 - **Missing `z` voted confidently for the wrong answer.** A dead `z` channel makes every z-based
   separation read zero — and "ankles together in z" is precisely the evidence for *squat* over
@@ -394,8 +427,9 @@ The four most likely to need real-world adjustment, worst first:
 
 1. `LUNGE_CONFIG.deadbandAnkleDz` / `wVoteAnkleDz` — MediaPipe `z` has systematic error no synthetic
    model predicts. If it proves unusable, set `wVoteAnkleDz` to 0; the module keeps working.
-2. `SQUAT_CONFIG.depthExcursion` / `LUNGE_CONFIG.depthExcursion` — stable to ±4% in simulation, but
-   real squat *style* varies far more than body proportion does.
+2. `SQUAT_CONFIG.depthExcursion` / `LUNGE_CONFIG.depthExcursion` — stable to ±4% across bodies and
+   ±1.4% across squat style in simulation, but how deep a given person chooses to squat is a
+   different question from either, and only real sessions answer it.
 3. `PUSHUP_CONFIG.sagFullAt` / `sagZeroAt` — the synthetic hip-sag model is the least trustworthy
    part of the generator, which is why `rejectSaggedReps` defaults to **off**: rigidity is reported
    every frame so you can validate it before it starts discarding anyone's reps.
@@ -475,12 +509,12 @@ src/dev/                 offline verification, never shipped
   synthBody.ts           3D body + pinhole camera model of the fixed placement
   synthExercises.ts      squat / push-up / lunge / hinge / arm-raise kinematics
   runPipeline.ts         drives the real pipeline over synthetic or recorded frames
-  probe*.ts              the measurement probes
+  probe*.ts              the measurement probes, including probe:style
   replayCli.ts           offline replay and comparison
 
 android/app/src/main/java/com/moobitrecog/pose/    Kotlin frame-processor plugin
 ios/MoobitRecog/Pose/                              Swift frame-processor plugin
 tools/dev-server/                                  local-only telemetry sink
-__tests__/                                         91 tests
+__tests__/                                         107 tests
 sessions/                                          landed session data (gitignored)
 ```

@@ -41,7 +41,6 @@ import {
   depthVelocity,
   diagnosticsOf,
   gatesSatisfied,
-  nearness,
   resetReciprocatingState,
   stepReciprocating,
   type ExerciseDiagnostics,
@@ -82,15 +81,20 @@ export const PUSHUP_CONFIG = {
   depthExcursionFrac: 0.347,
 
   // ---- Corroborators -----------------------------------------------------------------------
+  // Direction and a minimum, not a matched magnitude. Push-up geometry is more constrained than
+  // the squat's, but hand placement and elbow flare still move the apparent excursion a long way,
+  // and the check only needs to establish that the elbow flexed and the torso foreshortened —
+  // which is what separates a push-up from lowering the whole body on straight arms.
   /** Apparent elbow angle at the top of a push-up, in degrees. Measured 165.9. */
   elbowAngleAtTop: 165.9,
-  /** Apparent elbow angle falls this far, in degrees, at full depth. */
-  elbowDropAtFullDepth: 34.4,
-  /** torso/shoulderWidth falls this far at full depth. */
-  torsoRatioDropAtFullDepth: 0.199,
+  /** Elbow flexion, in degrees at full depth, for full corroboration. */
+  elbowDropForFullScore: 20,
+  elbowDropFloor: 5,
   /** Apparent torso/shoulderWidth at the top of a clean push-up. */
   torsoRatioAtTop: 0.54,
-  corroborationTolerance: 0.9,
+  /** Torso foreshortening at full depth, for full corroboration. */
+  torsoRatioDropForFullScore: 0.1,
+  torsoRatioDropFloor: 0.01,
   corroborationMinDepth: 25,
 
   // ---- Rigidity ("cheat" detection) --------------------------------------------------------
@@ -262,15 +266,17 @@ export const pushupModule: ExerciseModule<PushupState> = {
     // from the whole body being lowered with straight arms.
     const elbowDrop = cfg.elbowAngleAtTop - f.elbowAngle;
     if (elbowDrop === elbowDrop) {
-      const expected = cfg.elbowDropAtFullDepth * frac;
-      sum += nearness(elbowDrop, expected, Math.max(8, expected * cfg.corroborationTolerance + 8));
+      sum += atLeast(elbowDrop, cfg.elbowDropFloor * frac, cfg.elbowDropForFullScore * frac);
       n++;
     }
 
     const torsoDrop = cfg.torsoRatioAtTop - f.torsoOverShoulderWidth;
     if (torsoDrop === torsoDrop) {
-      const expected = cfg.torsoRatioDropAtFullDepth * frac;
-      sum += nearness(torsoDrop, expected, Math.max(0.08, expected * cfg.corroborationTolerance + 0.08));
+      sum += atLeast(
+        torsoDrop,
+        cfg.torsoRatioDropFloor * frac,
+        cfg.torsoRatioDropForFullScore * frac,
+      );
       n++;
     }
 

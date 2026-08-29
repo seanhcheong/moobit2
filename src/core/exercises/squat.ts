@@ -37,7 +37,6 @@ import {
   depthVelocity,
   diagnosticsOf,
   gatesSatisfied,
-  nearness,
   resetReciprocatingState,
   stepReciprocating,
   type ExerciseDiagnostics,
@@ -81,15 +80,30 @@ export const SQUAT_CONFIG = {
   /** When adapting: EMA weight per completed rep. */
   adaptRate: 0.25,
 
-  // ---- Corroborators (expected excursions at full depth) ------------------------------------
-  /** Apparent knee angle falls this far, in degrees, at full depth. */
-  kneeDropAtFullDepth: 29.2,
-  /** Apparent hip angle falls this far, in degrees, at full depth. */
-  hipDropAtFullDepth: 25.5,
-  /** Apparent thigh/shank ratio falls this far at full depth. */
-  thighShankDropAtFullDepth: 0.533,
-  /** Corroborator tolerance, as a fraction of the expected drop. Generous: these are checks. */
-  corroborationTolerance: 0.8,
+  // ---- Corroborators -----------------------------------------------------------------------
+  //
+  // These check DIRECTION and a MINIMUM, not a matched magnitude. That is a correction: the
+  // original design matched each excursion against an expected value, and measurement showed
+  // that cannot work here. Sweeping squat style — how far the hips travel back, which with
+  // planted feet and a given pelvis height fully determines how far the knee travels forward —
+  // moves the apparent knee drop at full depth from 29 degrees to 156 degrees, a 5.4x swing,
+  // because a knee-dominant squat points the thigh almost straight down the camera's view axis
+  // and foreshortens it to nothing. Reproduce with `npm run probe:style`.
+  //
+  // A matched target calibrated at one style scored 0.00 at every other style, silently zeroing
+  // the corroboration term for essentially every real user. A saturating minimum accepts all
+  // styles while still rejecting a movement in which the joint does not flex at all, which is
+  // the only thing the check is actually for.
+  //
+  /** Knee flexion, in degrees at full depth, for full corroboration. Ramps from `...Floor`. */
+  kneeDropForFullScore: 20,
+  kneeDropFloor: 6,
+  /** Hip flexion, in degrees at full depth, for full corroboration. */
+  hipDropForFullScore: 18,
+  hipDropFloor: 5,
+  /** Thigh/shank ratio must fall by at least this fraction of its baseline at full depth. */
+  thighShankDropForFullScore: 0.25,
+  thighShankDropFloor: 0.05,
   /** Below this depth the corroborators are not evaluated — the expected drop is within noise. */
   corroborationMinDepth: 25,
 
@@ -244,24 +258,27 @@ export const squatModule: ExerciseModule<SquatState> = {
 
     const kneeDrop = b.kneeAngle - f.kneeAngle;
     if (kneeDrop === kneeDrop) {
-      const expected = cfg.kneeDropAtFullDepth * frac;
-      sum += nearness(kneeDrop, expected, Math.max(4, expected * cfg.corroborationTolerance + 4));
+      sum += atLeast(kneeDrop, cfg.kneeDropFloor * frac, cfg.kneeDropForFullScore * frac);
       n++;
     }
 
     // The brief's requirement that hip angle move *with* knee angle, so a forward hinge with
-    // straight legs cannot register as a squat.
+    // straight legs cannot register as a squat. Note the depth metric already rejects a hinge on
+    // its own — the hips barely drop in one, so `hipRatio` hardly moves — which is why the hinge
+    // test kept passing even while this term was scoring zero.
     const hipDrop = b.hipAngle - f.hipAngle;
     if (hipDrop === hipDrop) {
-      const expected = cfg.hipDropAtFullDepth * frac;
-      sum += nearness(hipDrop, expected, Math.max(4, expected * cfg.corroborationTolerance + 4));
+      sum += atLeast(hipDrop, cfg.hipDropFloor * frac, cfg.hipDropForFullScore * frac);
       n++;
     }
 
     const tsDrop = b.thighShankRatio - f.thighShankRatio;
     if (tsDrop === tsDrop) {
-      const expected = cfg.thighShankDropAtFullDepth * frac;
-      sum += nearness(tsDrop, expected, Math.max(0.08, expected * cfg.corroborationTolerance + 0.08));
+      sum += atLeast(
+        tsDrop,
+        cfg.thighShankDropFloor * frac,
+        cfg.thighShankDropForFullScore * frac,
+      );
       n++;
     }
 

@@ -102,6 +102,30 @@ describe('squat', () => {
     }
   });
 
+  it('holds across squat style, which varies far more than body proportion', () => {
+    // Hip setback determines how far the knee travels along the camera's view axis, which moves
+    // the apparent knee flexion at full depth by 5.4x (29 deg to 156 deg). This is what broke the
+    // original magnitude-matched corroborators; see src/dev/probeStyle.ts.
+    for (const hipSetbackM of [0.05, 0.12, 0.22, 0.3, 0.38]) {
+      const r = runSynth({ exercise: 'squat', reps: 8, seed: 113, hipSetbackM }, CAL);
+      expect(r.repCounts.squat).toBe(8);
+      expect(depthCorrelation(r, 'squat')).toBeGreaterThan(0.85);
+    }
+  });
+
+  it('keeps corroboration alive across every squat style', () => {
+    // A regression guard with teeth: the corroborators previously scored 0.00 at four of five
+    // styles, which did not change any rep count but silently drained the confidence margin that
+    // separates a squat from a lunge. Confidence is the thing to assert, not the rep count.
+    for (const hipSetbackM of [0.05, 0.22, 0.38]) {
+      const r = runSynth({ exercise: 'squat', reps: 6, seed: 114, hipSetbackM }, CAL);
+      const active = r.events.filter((e) => e.exercise === 'squat' && e.depth > 60);
+      expect(active.length).toBeGreaterThan(20);
+      const meanConf = active.reduce((a, e) => a + e.confidence, 0) / active.length;
+      expect(meanConf).toBeGreaterThan(0.8);
+    }
+  });
+
   it('holds at elevated landmark noise', () => {
     for (const noiseSigmaPx of [2.8, 5.6, 8.4]) {
       const r = runSynth({ exercise: 'squat', reps: 8, seed: 110, noiseSigmaPx }, CAL);

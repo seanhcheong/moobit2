@@ -16,9 +16,10 @@
     "probe:geometry": "tsx src/dev/probeGeometry.ts",
     "probe:signals": "tsx src/dev/probeSignals.ts",
     "probe:features": "tsx src/dev/probeFeatures.ts",
+    "probe:style": "tsx src/dev/probeStyle.ts",
     "probe:run": "tsx src/dev/probeRun.ts",
     "probe:stress": "tsx src/dev/probeStress.ts",
-    "probe:all": "npm run probe:geometry && npm run probe:signals && npm run probe:features && npm run probe:run && npm run probe:stress",
+    "probe:all": "npm run probe:geometry && npm run probe:signals && npm run probe:features && npm run probe:style && npm run probe:run && npm run probe:stress",
     "adb:reverse": "adb reverse tcp:8787 tcp:8787 && adb reverse tcp:8081 tcp:8081"
   },
   "dependencies": {

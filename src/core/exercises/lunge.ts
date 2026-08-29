@@ -50,7 +50,6 @@ import {
   depthVelocity,
   diagnosticsOf,
   gatesSatisfied,
-  nearness,
   resetReciprocatingState,
   stepReciprocating,
   type ExerciseDiagnostics,
@@ -75,11 +74,15 @@ export const LUNGE_CONFIG = {
   depthExcursion: 0.123,
 
   // ---- Corroborators -----------------------------------------------------------------------
-  /** Apparent knee angle (mean of both legs) falls this far at full depth. */
-  kneeDropAtFullDepth: 36.6,
-  /** Apparent hip angle falls this far at full depth. */
-  hipDropAtFullDepth: 28.5,
-  corroborationTolerance: 0.9,
+  // Direction and a minimum, not a matched magnitude — for the same reason as the squat: the
+  // apparent flexion depends heavily on how far the knee travels along the camera's view axis,
+  // which is a property of the user's style rather than of the exercise. See squat.ts.
+  /** Knee flexion, in degrees at full depth, for full corroboration. */
+  kneeDropForFullScore: 22,
+  kneeDropFloor: 6,
+  /** Hip flexion, in degrees at full depth, for full corroboration. */
+  hipDropForFullScore: 16,
+  hipDropFloor: 4,
   corroborationMinDepth: 25,
 
   // ---- Disambiguation ----------------------------------------------------------------------
@@ -268,15 +271,13 @@ export const lungeModule: ExerciseModule<LungeState> = {
 
     const kneeDrop = b.kneeAngle - f.kneeAngle;
     if (kneeDrop === kneeDrop) {
-      const expected = cfg.kneeDropAtFullDepth * frac;
-      sum += nearness(kneeDrop, expected, Math.max(6, expected * cfg.corroborationTolerance + 6));
+      sum += atLeast(kneeDrop, cfg.kneeDropFloor * frac, cfg.kneeDropForFullScore * frac);
       n++;
     }
 
     const hipDrop = b.hipAngle - f.hipAngle;
     if (hipDrop === hipDrop) {
-      const expected = cfg.hipDropAtFullDepth * frac;
-      sum += nearness(hipDrop, expected, Math.max(6, expected * cfg.corroborationTolerance + 6));
+      sum += atLeast(hipDrop, cfg.hipDropFloor * frac, cfg.hipDropForFullScore * frac);
       n++;
     }
 

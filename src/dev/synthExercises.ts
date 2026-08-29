@@ -134,6 +134,19 @@ export interface PoseOptions {
   swayY?: number;
   /** Push-up only: metres the hips sag below the plank line. Emulates a cheating rep. */
   hipSag?: number;
+  /**
+   * Squat only: metres the hips travel BACKWARD at full depth.
+   *
+   * This is squat *style*, and it matters more than it looks. With the ankles planted and the
+   * pelvis height fixed, the two-link leg has only one degree of freedom left, so however far the
+   * hips fail to travel back is forced into the knee travelling forward instead. A small setback
+   * therefore produces a knee-dominant squat whose thigh points almost straight at a head-on lens
+   * and foreshortens severely; a large setback produces a hip-dominant squat whose thigh stays
+   * closer to the image plane.
+   *
+   * Real bodyweight squats sit around 0.15-0.30 m. The default is 0.22.
+   */
+  hipSetbackM?: number;
   /** Lunge only: which leg is forward. */
   frontLeg?: 'left' | 'right';
   /** Lunge only: forward/back foot separation in metres. */
@@ -162,8 +175,9 @@ export function squatPose(opts: PoseOptions): Skeleton {
   // A deep bodyweight squat drops the pelvis to roughly 55% of its standing height.
   const hipY = standHipY * (1 - 0.45 * depth) + swayY;
   // Hips travel backward as the knees travel forward; the pair is what keeps the centre of mass
-  // over the feet.
-  const hipZ = -0.05 * depth;
+  // over the feet. See `hipSetbackM` — this is squat style, and it drives how badly the thigh
+  // foreshortens from a head-on lens.
+  const hipZ = -(opts.hipSetbackM ?? 0.22) * depth;
 
   const ankleY = seg.ankleHeight;
   set(s, LM.LEFT_ANKLE, seg.hipHalfWidth + swayX, ankleY, 0);
@@ -500,6 +514,10 @@ export interface SynthSessionSpec {
   firstFrontLeg?: 'left' | 'right';
   /** Amplitude of idle sway in metres. */
   swayM?: number;
+  /** Squat only: how far back the hips travel at full depth. Squat style; see PoseOptions. */
+  hipSetbackM?: number;
+  /** Lunge only: forward/back foot separation in metres. */
+  strideM?: number;
 }
 
 /**
@@ -591,7 +609,16 @@ export function generateSession(spec: SynthSessionSpec): SynthFrame[] {
     const swayX = Math.sin(t * 1.1) * sway;
     const swayY = Math.sin(t * 0.7 + 1.3) * sway * 0.5;
 
-    const poseOpts: PoseOptions = { depth, seg, swayX, swayY, hipSag, frontLeg };
+    const poseOpts: PoseOptions = {
+      depth,
+      seg,
+      swayX,
+      swayY,
+      hipSag,
+      frontLeg,
+      strideM: spec.strideM,
+      hipSetbackM: spec.hipSetbackM,
+    };
 
     let skel: Skeleton;
     switch (spec.exercise) {

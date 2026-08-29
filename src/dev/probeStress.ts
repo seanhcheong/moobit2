@@ -118,6 +118,18 @@ for (const distanceM of [1.4, 1.6, 2.1, 2.4]) {
   );
 }
 
+// Squat style, which moves the apparent knee flexion at full depth by 5.4x. See probe:style.
+for (const hipSetbackM of [0.05, 0.12, 0.22, 0.3, 0.38]) {
+  const r = runSynth({ exercise: 'squat', reps: 10, seed: 37, hipSetbackM }, { forceBaselineAtSec: 2.0 });
+  const active = r.events.filter((e) => e.exercise === 'squat' && e.depth > 60);
+  const meanConf = active.length ? active.reduce((a, e) => a + e.confidence, 0) / active.length : 0;
+  check(
+    `squat x10, hip setback ${hipSetbackM.toFixed(2)} m (style)`,
+    (r.repCounts.squat ?? 0) === 10 && meanConf > 0.8,
+    `reps ${r.repCounts.squat} meanConf@depth ${f(meanConf)} depthCorr ${f(depthCorrelation(r, 'squat'), 3)}`,
+  );
+}
+
 for (const hfovDeg of [50, 70, 80]) {
   const r = runSynth(
     { exercise: 'squat', reps: 10, seed: 34, camera: { ...DEFAULT_CAMERA, hfovDeg } },
