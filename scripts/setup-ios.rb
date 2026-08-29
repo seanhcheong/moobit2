@@ -43,6 +43,65 @@ MODEL_GLOB = 'MoobitRecog/pose_landmarker_*.task'
 
 abort "Cannot find #{PROJECT_PATH}" unless PROJECT_PATH.exist?
 
+# ---------------------------------------------------------------------------------------------
+# Preflight: is a full Xcode actually available?
+#
+# Apple's standalone Command Line Tools can compile for macOS but ship NO iOS SDK. With only
+# those installed, `pod install` gets a long way in and then dies inside glog's configure script
+# with about a hundred lines of autoconf output whose actual cause is one buried line,
+# `xcrun: error: SDK "iphoneos" cannot be located`. That is a miserable first-run experience for
+# something this easy to detect, so detect it here and say it in one sentence.
+# ---------------------------------------------------------------------------------------------
+def tool_output(cmd)
+  out = `#{cmd} 2>/dev/null`.strip
+  $?.success? ? out : nil
+rescue StandardError
+  nil
+end
+
+developer_dir = tool_output('xcode-select -p')
+xcode_version = tool_output('xcodebuild -version')
+ios_sdk = tool_output('xcrun --sdk iphoneos --show-sdk-path')
+
+if developer_dir.nil? || xcode_version.to_s.empty? || ios_sdk.to_s.empty?
+  warn <<~XCODE
+
+    #{'=' * 74}
+    FULL XCODE IS REQUIRED, AND IS NOT SET UP
+    #{'=' * 74}
+
+    xcode-select -p        -> #{developer_dir || '(failed)'}
+    xcodebuild -version    -> #{xcode_version.to_s.empty? ? '(empty/failed)' : xcode_version.lines.first.strip}
+    iphoneos SDK path      -> #{ios_sdk.to_s.empty? ? '(NOT FOUND)' : ios_sdk}
+
+    Apple's standalone Command Line Tools cannot build for iOS — they contain no iOS SDK.
+    Without a full Xcode, `pod install` fails deep inside glog's configure script with a wall
+    of autoconf output whose real cause is one line: 'SDK "iphoneos" cannot be located'.
+
+    If Xcode IS installed but the active developer directory points at CommandLineTools:
+
+        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        sudo xcodebuild -license accept
+        xcodebuild -runFirstLaunch
+
+    If Xcode is NOT installed, get it from the Mac App Store (~10 GB), open it once to finish
+    installing components, then run the three commands above.
+
+    Then verify (this must print a version, not an error):
+
+        xcodebuild -version
+
+    If a previous `pod install` already failed, clear the poisoned cache first:
+
+        rm -rf ~/Library/Caches/CocoaPods ios/Pods ios/Podfile.lock
+
+    Android needs none of this: `npm run setup:android && npm run android`.
+    #{'=' * 74}
+
+  XCODE
+  abort 'Aborting before touching the Xcode project. Fix the toolchain above and re-run.'
+end
+
 project = Xcodeproj::Project.open(PROJECT_PATH.to_s)
 target = project.targets.find { |t| t.name == TARGET_NAME }
 abort "No target named #{TARGET_NAME}. Targets: #{project.targets.map(&:name).join(', ')}" if target.nil?
