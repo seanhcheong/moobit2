@@ -14,7 +14,6 @@ import { squatModule } from './squat';
 import { pushupModule } from './pushup';
 import { lungeModule } from './lunge';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const EXERCISE_REGISTRY: readonly ExerciseModule<any>[] = [
   squatModule,
   pushupModule,

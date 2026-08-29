@@ -25,7 +25,6 @@ import {
   projectToFlat,
   segmentsFor,
   type CameraSpec,
-  type Segments,
   type Skeleton,
 } from './synthBody';
 import { lungePose, pushupPose, squatPose } from './synthExercises';
@@ -42,7 +41,6 @@ function viewOf(skel: Skeleton, camera: CameraSpec) {
 
 const midV = (v: ReturnType<typeof viewOf>, a: number, b: number) => (v.v[a] + v.v[b]) / 2;
 const midU = (v: ReturnType<typeof viewOf>, a: number, b: number) => (v.u[a] + v.u[b]) / 2;
-const midZ = (v: ReturnType<typeof viewOf>, a: number, b: number) => (v.z[a] + v.z[b]) / 2;
 
 // ---------------------------------------------------------------------------------------------
 // Candidate depth metrics. All are ratios of image-space distances, hence free of absolute

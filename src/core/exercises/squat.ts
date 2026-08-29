@@ -26,8 +26,6 @@
  * All numbers below come from `npm run probe:features` and `npm run probe:signals`.
  */
 
-import type { Baseline } from '../calibration';
-import type { Features } from '../features';
 import { clamp01, normalizeRange } from '../geometry';
 import { LM } from '../landmarks';
 import {
@@ -44,7 +42,6 @@ import {
   stepReciprocating,
   type ExerciseDiagnostics,
   type ExerciseGates,
-  type ExerciseMeasurement,
   type ExerciseModule,
   type ExerciseScore,
   type ExerciseStepResult,

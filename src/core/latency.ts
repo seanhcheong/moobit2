@@ -46,6 +46,15 @@ export interface LatencyBreakdown {
   decimateMs: number;
   /** Time spent in the shared TypeScript classifier this frame. */
   classifyMs: number;
+  /**
+   * Time to hop from the frame-processor worklet to wherever the classifier runs.
+   *
+   * Zero when the classifier runs inside the worklet. Non-zero when it runs on the JS thread,
+   * and then it belongs in the reported total: a state update that is correct but arrives two
+   * frames late feels exactly as bad as one that took two frames to compute. Excluding it would
+   * be the flattering choice, not the true one.
+   */
+  hopMs: number;
   /** Whatever `latencyMs` is configured to report. */
   reportedMs: number;
 }
@@ -59,6 +68,7 @@ export function createLatencyBreakdown(): LatencyBreakdown {
     inferenceMs: 0,
     decimateMs: 0,
     classifyMs: 0,
+    hopMs: 0,
     reportedMs: 0,
   };
 }
@@ -70,6 +80,7 @@ export interface LatencyTracker {
   inference: number[];
   classify: number[];
   resultAge: number[];
+  hop: number[];
   /** Frames the native side dropped because inference was busy. */
   droppedFrames: number;
   /** Frames processed by the classifier. */
@@ -92,6 +103,7 @@ export function createLatencyTracker(
     inference: [],
     classify: [],
     resultAge: [],
+    hop: [],
     droppedFrames: 0,
     processedFrames: 0,
     noResultFrames: 0,
@@ -106,6 +118,7 @@ export function resetLatencyTracker(t: LatencyTracker): void {
   t.inference.length = 0;
   t.classify.length = 0;
   t.resultAge.length = 0;
+  t.hop.length = 0;
   t.droppedFrames = 0;
   t.processedFrames = 0;
   t.noResultFrames = 0;
@@ -120,6 +133,7 @@ export function recordLatency(t: LatencyTracker, b: LatencyBreakdown): void {
   t.inference.push(b.inferenceMs);
   t.classify.push(b.classifyMs);
   t.resultAge.push(b.resultAgeMs);
+  t.hop.push(b.hopMs);
 }
 
 export interface Percentiles {
@@ -185,6 +199,8 @@ export interface LatencyReport {
   inference: Percentiles;
   classify: Percentiles;
   resultAge: Percentiles;
+  /** Worklet-to-classifier hop. All zeroes when the classifier runs inside the worklet. */
+  hop: Percentiles;
   processedFrames: number;
   droppedFrames: number;
   noResultFrames: number;
@@ -202,6 +218,7 @@ export function latencyReport(t: LatencyTracker): LatencyReport {
     inference: percentiles(t.inference),
     classify: percentiles(t.classify),
     resultAge: percentiles(t.resultAge),
+    hop: percentiles(t.hop),
     processedFrames: t.processedFrames,
     droppedFrames: t.droppedFrames,
     noResultFrames: t.noResultFrames,

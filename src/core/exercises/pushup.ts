@@ -30,8 +30,6 @@
  * automatically.
  */
 
-import type { Baseline } from '../calibration';
-import type { Features } from '../features';
 import { clamp01 } from '../geometry';
 import { LM } from '../landmarks';
 import {

@@ -123,7 +123,6 @@ export interface PipelineConfig {
 
 function defaultClock(): number {
   'worklet';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const g = globalThis as any;
   if (g && g.performance && typeof g.performance.now === 'function') return g.performance.now();
   if (typeof Date !== 'undefined' && typeof Date.now === 'function') return Date.now();
@@ -166,14 +165,17 @@ export interface PipelineOutput {
 
 export interface Pipeline {
   readonly config: PipelineConfig;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly registry: readonly ExerciseModule<any>[];
   readonly latencyTracker: LatencyTracker;
   readonly disambiguation: DisambiguationState;
   baseline: Baseline | null;
   mode: PipelineMode;
 
-  processFrame(native: NativePoseResult, wallClockMs: number): PipelineOutput;
+  /**
+   * @param hopMs time already spent getting here from the frame-processor worklet. Zero when the
+   *   classifier runs inside the worklet; see {@link LatencyBreakdown.hopMs}.
+   */
+  processFrame(native: NativePoseResult, wallClockMs: number, hopMs?: number): PipelineOutput;
   beginCalibration(): void;
   cancelCalibration(): void;
   /** Adopt a baseline captured earlier, e.g. when replaying a recorded session. */
@@ -185,13 +187,11 @@ export interface Pipeline {
   resetCounters(): void;
   /** Full reset, back to framing with no baseline. */
   reset(): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   exerciseState(index: number): any;
 }
 
 export function createPipeline(
   configIn?: Partial<PipelineConfig>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registry: readonly ExerciseModule<any>[] = EXERCISE_REGISTRY,
 ): Pipeline {
   'worklet';
@@ -211,7 +211,6 @@ export function createPipeline(
   const latencyTracker: LatencyTracker = createLatencyTracker(config.latencyDefinition);
   const latency: LatencyBreakdown = createLatencyBreakdown();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const states: any[] = [];
   for (let i = 0; i < registry.length; i++) states.push(registry[i].createState());
 
@@ -328,7 +327,7 @@ export function createPipeline(
       return states[index];
     },
 
-    processFrame(native, wallClockMs) {
+    processFrame(native, wallClockMs, hopMs = 0) {
       'worklet';
       const t0 = config.clock();
 
@@ -404,7 +403,6 @@ export function createPipeline(
         const activeIdx = disambiguation.activeIndex;
         const atTop =
           activeIdx < 0 ||
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (states[activeIdx] as any).fsm.phase === 'top';
 
         const decision = stepDisambiguation(
@@ -465,8 +463,9 @@ export function createPipeline(
       latency.inferenceMs = native.inferenceMs ?? 0;
       latency.decimateMs = native.decimateMs;
       latency.classifyMs = classifyMs;
-      latency.pipelineMs = resultAtMs - captureMs + classifyMs;
-      latency.stateAgeMs = native.nowMs - captureMs + classifyMs;
+      latency.hopMs = hopMs;
+      latency.pipelineMs = resultAtMs - captureMs + hopMs + classifyMs;
+      latency.stateAgeMs = native.nowMs - captureMs + hopMs + classifyMs;
       latency.reportedMs =
         config.latencyDefinition === 'STATE_AGE' ? latency.stateAgeMs : latency.pipelineMs;
       recordLatency(latencyTracker, latency);

@@ -1,45 +1,30 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
+ * Moobit exercise-recognition test harness.
  *
- * @format
+ * Scope is deliberately recognition only: camera -> pose -> continuous exercise state, with the
+ * instrumentation needed to measure how good and how fast that is. No character, no animation, no
+ * game state.
  */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import React from 'react';
+import { StatusBar, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { HarnessScreen } from './src/app/screens/HarnessScreen';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
+export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#020617" />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <HarnessScreen />
+        </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  root: { flex: 1, backgroundColor: '#020617' },
+  safe: { flex: 1 },
 });
-
-export default App;

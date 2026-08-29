@@ -173,9 +173,7 @@ export interface DisambiguationResult {
  */
 export function stepDisambiguation(
   s: DisambiguationState,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   registry: readonly ExerciseModule<any>[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   states: any[],
   f: Features,
   b: Baseline,

@@ -54,9 +54,6 @@ function trueAngle3d(skel: Skeleton, a: number, b: number, c: number): number {
 function ny(flat: number[], i: number): number {
   return flat[i * LM_STRIDE + 1];
 }
-function nx(flat: number[], i: number): number {
-  return flat[i * LM_STRIDE];
-}
 function nz(flat: number[], i: number): number {
   return flat[i * LM_STRIDE + 2];
 }
