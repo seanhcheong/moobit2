@@ -31,6 +31,38 @@ PROJECT_PATH = ROOT / 'ios' / 'MoobitRecog.xcodeproj'
 TARGET_NAME = 'MoobitRecog'
 APP_GROUP = 'MoobitRecog'
 
+# ---------------------------------------------------------------------------------------------
+# Build settings forced onto the app target.
+#
+# Both of these are wrong in the stock React Native template for our purposes, and both fail
+# LATE and confusingly — one during the copy-frameworks phase, one during code signing — so
+# they are corrected here rather than left as manual Xcode clicks.
+# ---------------------------------------------------------------------------------------------
+TARGET_SETTINGS = {
+  # Xcode 15 turned the user-script sandbox on. CocoaPods' "[CP] Embed Pods Frameworks" phase
+  # rsyncs prebuilt frameworks out of DerivedData into the .app, which the sandbox denies:
+  #
+  #   Sandbox: rsync.samba(NNNNN) deny(1) file-read-data .../hermes.framework/Info.plist
+  #   Sandbox: rsync.samba(NNNNN) deny(1) file-write-create .../Frameworks/hermes.framework/...
+  #
+  # That is a hard build failure, and nothing about the message points at the cause. React
+  # Native has no fix for it as of 0.80 (see facebook/react-native#42177), so every RN app that
+  # embeds prebuilt frameworks — which is all of them, Hermes is one — has to disable it.
+  'ENABLE_USER_SCRIPT_SANDBOXING' => 'NO',
+
+  # The template ships `org.reactjs.native.example.$(PRODUCT_NAME)`. That prefix is already
+  # registered to somebody on Apple's side, so a free personal team cannot claim it, and the
+  # FIRST device build dies with:
+  #
+  #   Failed to register bundle identifier. The app identifier
+  #   "org.reactjs.native.example.MoobitRecog" cannot be registered to your development team
+  #   because it is not available.
+  #
+  # Matches the Android applicationId. If Xcode reports this one is taken too, any unique
+  # string works — append something personal, e.g. com.moobitrecog.yourname.
+  'PRODUCT_BUNDLE_IDENTIFIER' => 'com.moobitrecog'
+}.freeze
+
 # Compiled into the target. Paths are relative to ios/, matching the template's own convention.
 SOURCES = [
   'MoobitRecog/Pose/PoseLandmarkerHolder.swift',
@@ -169,6 +201,22 @@ Dir.glob((ROOT / 'ios' / MODEL_GLOB).to_s).sort.each do |abs|
   end
 end
 
+# ---------------------------------------------------------------------------------------------
+# Build settings. Applied per build configuration on the app target, which is the level the
+# target's own script phases and code signing actually read.
+# ---------------------------------------------------------------------------------------------
+changed_settings = []
+
+target.build_configurations.each do |config|
+  TARGET_SETTINGS.each do |key, want|
+    have = config.build_settings[key]
+    next if have == want
+
+    config.build_settings[key] = want
+    changed_settings << "#{config.name}: #{key} = #{want}#{have.nil? ? ' (was unset)' : " (was #{have})"}"
+  end
+end
+
 project.save
 
 puts
@@ -193,6 +241,13 @@ else
   puts "\nCopy Bundle Resources:"
   added_resources.each { |p| puts "  + #{p}" }
   skipped_resources.each { |p| puts "  = #{p} (already there)" }
+end
+
+if changed_settings.empty?
+  puts "\nBuild settings: already correct (#{TARGET_SETTINGS.keys.join(', ')})"
+else
+  puts "\nBuild settings:"
+  changed_settings.each { |s| puts "  ~ #{s}" }
 end
 
 puts "\nFinal state of the target:"

@@ -61,9 +61,38 @@ npm run dev             # Metro + the local telemetry server
 npm run ios             # or open ios/MoobitRecog.xcworkspace and hit Run
 ```
 
-For a physical device you must set a signing team once: open
-`ios/MoobitRecog.xcworkspace`, select the **MoobitRecog** target → *Signing & Capabilities* →
-pick your Apple ID under *Team*. A free Apple ID works; the build just expires after 7 days.
+#### Running on the phone, in order
+
+Every one of these has bitten a first build. The Simulator is not a shortcut past any of them —
+it has no camera, so it cannot run this app at all.
+
+1. **Plug the iPhone in** and unlock it. On iOS 16+ enable *Settings → Privacy & Security →
+   Developer Mode*, toggle it on, and let the phone reboot. The option only appears after the
+   phone has been connected to Xcode once.
+2. **Pick the phone as the run destination** in Xcode's toolbar — the device dropdown next to the
+   scheme name. If it still says *iPhone 15 Pro* or similar you are building for the Simulator;
+   the giveaway in build logs is paths containing `Debug-iphonesimulator` instead of
+   `Debug-iphoneos`.
+3. **Set a signing team once**: select the **MoobitRecog** target → *Signing & Capabilities* →
+   pick your Apple ID under *Team*. A free Apple ID works; the build just expires after 7 days.
+   Signing & Capabilities only appears when you have selected the *target* under TARGETS, not the
+   blue project row above it.
+4. **Trust the certificate on the phone.** A free-team build installs but refuses to launch
+   ("Untrusted Developer") until you visit *Settings → General → VPN & Device Management* on the
+   iPhone and trust your Apple ID.
+
+`npm run setup:ios` also corrects two build settings the stock React Native template gets wrong,
+both of which fail late and opaquely:
+
+- `ENABLE_USER_SCRIPT_SANDBOXING = NO`. Xcode 15 sandboxes script phases, which blocks the rsync
+  CocoaPods uses to copy prebuilt frameworks (Hermes among them) into the `.app`. It surfaces as
+  `Sandbox: rsync.samba(NNNNN) deny(1) file-read-data .../hermes.framework/Info.plist` and is a
+  hard failure that says nothing about its own cause.
+- `PRODUCT_BUNDLE_IDENTIFIER = com.moobitrecog`. The template's
+  `org.reactjs.native.example.*` prefix is already registered to somebody on Apple's side, so a
+  free personal team cannot claim it and the first device build dies with *"cannot be registered
+  to your development team because it is not available"*. If Xcode says `com.moobitrecog` is
+  taken too, any unique string works — append something personal.
 
 `npm run setup:ios` exists because creating a file on disk does **not** add it to an Xcode target.
 The three plugin sources and the `.task` model all have to be registered in `project.pbxproj`, and

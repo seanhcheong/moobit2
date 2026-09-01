@@ -39,5 +39,29 @@ target 'MoobitRecog' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 15's user-script sandbox denies the rsync that CocoaPods' "[CP] Embed Pods
+    # Frameworks" phase uses to copy prebuilt frameworks (Hermes among them) into the .app:
+    #
+    #   Sandbox: rsync.samba(NNNNN) deny(1) file-read-data .../hermes.framework/Info.plist
+    #
+    # It is a hard build failure whose message says nothing about the cause. scripts/setup-ios.rb
+    # sets this on the app target; repeated here so a fresh `pod install` in a checkout that
+    # never ran that script still produces a project that builds.
+    installer.pods_project.build_configurations.each do |config|
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+    end
+
+    installer.aggregate_targets.each do |aggregate_target|
+      user_project = aggregate_target.user_project
+      next if user_project.nil?
+
+      user_project.native_targets.each do |native_target|
+        native_target.build_configurations.each do |config|
+          config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+        end
+      end
+      user_project.save
+    end
   end
 end
