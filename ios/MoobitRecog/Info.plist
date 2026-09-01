@@ -34,8 +34,14 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera watches you exercise so the app can detect squats, push-ups and lunges. Video is processed on-device and never leaves your phone.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<!-- iOS 14+ gates any connection to a private-network address behind a user prompt, and the
+	     prompt requires this key. Without it the phone silently cannot reach the Mac, which
+	     breaks BOTH the Metro bundle over Wi-Fi and the telemetry POST — and the failure looks
+	     like an unexplained timeout, not a permission problem. The app only ever talks to
+	     loopback and RFC1918 addresses; see isLocalHost() in src/app/session/telemetry.ts, which
+	     refuses anything else. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Development builds load JavaScript from, and send debug session logs to, a dev server running on your own computer on this network. Nothing is sent to the internet.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
