@@ -8,6 +8,37 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# ---------------------------------------------------------------------------------------------
+# Use React Native's PREBUILT third-party dependencies instead of compiling them here.
+#
+# RN 0.80.3 pins fmt 11.0.2 (see node_modules/react-native/third-party-podspecs/
+# RCT-Folly.podspec), and fmt 11.0.2 does not compile with Xcode 26's clang:
+#
+#   Pods/fmt/include/fmt/format-inl.h:59:24 Call to consteval function
+#   'fmt::basic_format_string<...>::basic_format_string<FMT_COMPILE_STRING, 0>' is not a
+#   constant expression
+#
+# There is no local workaround. fmt's own -DFMT_USE_CONSTEVAL=0 escape hatch does not apply:
+# in 11.0.2 that macro is #defined unconditionally rather than behind #ifndef, so a command-line
+# value cannot win (fmt only made it overridable in 11.1). And the version is pinned exactly by
+# RN's own podspec, so a plain `pod 'fmt', '<newer>'` conflicts rather than overrides.
+#
+# Bumping React Native is the upstream fix, but not a small one: 0.81.6 still pins fmt 11.0.2, so
+# it would take 0.83+ (fmt 12.1.0), which also moves the native templates and would need
+# VisionCamera and worklets-core re-verified against it.
+#
+# RCT_USE_RN_DEP=1 avoids all of that. RN then pulls folly, fmt, glog and boost as a prebuilt
+# ReactNativeDependencies.xcframework from Maven Central, so fmt's implementation header is never
+# compiled on this machine and the error cannot occur. The artifacts are published for 0.80.3 —
+# both the debug and release tarballs return HTTP 200 — which matters because RN silently falls
+# back to building from source when they are missing.
+#
+# ||= so the source path stays reachable: `RCT_USE_RN_DEP=0 bundle exec pod install`.
+#
+# Expect `pod install` to download a few hundred MB the first time; it caches under
+# ios/Pods/ReactNativeDependencies-artifacts afterwards.
+ENV['RCT_USE_RN_DEP'] ||= '1'
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green

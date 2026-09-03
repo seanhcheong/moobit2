@@ -42,6 +42,17 @@ npm install
 around Xcode for iOS. You also need a physical iPhone — **the iOS Simulator has no camera**, so it
 cannot run this at all.
 
+Your Xcode must also be new enough for your *phone*: Xcode can only install onto a device whose
+chip and iOS version it ships a developer disk image for. An Xcode too old for the handset fails
+at install time, after a fully successful build, with
+`kAMDMobileImageMounterPersonalizedBundleMissingVariantError`. That is not fixable from this
+repo — it needs a newer Xcode, which in turn may need a newer macOS.
+
+On the other end, Xcode 26 cannot compile the fmt version React Native 0.80.3 pins. `ios/Podfile`
+handles this by setting `RCT_USE_RN_DEP=1`, which pulls React Native's third-party C++
+dependencies as a prebuilt xcframework instead of building them here; see the comment there for
+why the alternatives don't work.
+
 If `xcode-select -p` prints `/Library/Developer/CommandLineTools`, Xcode is installed but not
 active; the standalone Command Line Tools contain no iOS SDK. Fix with:
 
