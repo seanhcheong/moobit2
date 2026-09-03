@@ -262,7 +262,37 @@ export function createPipeline(
     warning: null,
   };
 
-  const pipeline: Pipeline = {
+  // ---------------------------------------------------------------------------------------------
+  // `pipeline` is created EMPTY here and populated from `members` below. That looks redundant and
+  // is not.
+  //
+  // Every method below carries a `'worklet'` directive, and the worklets-core Babel plugin
+  // rewrites such a function so its free variables are read from a closure object captured WHEN
+  // THE FUNCTION IS CREATED, not when it is called:
+  //
+  //   _f.__closure = { pipeline: pipeline };                       // emitted at the literal
+  //   // body becomes: const { pipeline } = this.__closure; pipeline.mode = ...
+  //
+  // Written as `const pipeline: Pipeline = { ... methods referring to pipeline ... }`, that
+  // capture is evaluated partway through the initialiser of the very binding it reads — and
+  // React Native's preset compiles the `const` down to a `var`, so instead of a TDZ error the
+  // worklet silently captures `undefined` forever. Every method then fails on first use:
+  //
+  //   TypeError: Cannot read property 'setBaseline' of undefined
+  //
+  // processFrame() self-refers ten times, so this took out the entire recognition path, not just
+  // calibration. It is invisible to the test suite because babel.config.js drops the worklets
+  // plugin under NODE_ENV=test, and untransformed closures bind late, which is why 124 green
+  // tests said nothing. __tests__/workletSelfCapture.test.ts now fails on this shape directly.
+  //
+  // Creating the object first means the capture sees a real (if still empty) object, and since
+  // Object.assign mutates that same object rather than returning a new one, the reference the
+  // worklets hold is the one callers get back. Keeping the members in a separately annotated
+  // `const members: Pipeline` preserves full type checking of the literal, which a bare
+  // `Object.assign(pipeline, { ... })` would silently give up.
+  const pipeline = {} as Pipeline;
+
+  const members: Pipeline = {
     config,
     registry,
     latencyTracker,
@@ -516,7 +546,10 @@ export function createPipeline(
     return out;
   }
 
-  return pipeline;
+  // Mutates `pipeline` in place and returns it, so this is the same object the worklets above
+  // captured. Returning `members` instead would hand callers an object the methods do not write
+  // to, which is the subtle way to reintroduce the bug this construction exists to avoid.
+  return Object.assign(pipeline, members);
 }
 
 /**
