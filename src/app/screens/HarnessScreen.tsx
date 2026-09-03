@@ -14,6 +14,7 @@ import {
   LayoutChangeEvent,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -49,6 +50,11 @@ export function HarnessScreen() {
   const [appliedToggles, setAppliedToggles] = useState<HarnessToggles>(DEFAULT_TOGGLES);
   const [devServer, setDevServer] = useState<DevServerSettings>(DEFAULT_DEV_SERVER);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Open by default: a first-run user needs the controls to get anywhere. Collapsing gives a
+  // completely unobstructed preview, which is what you want when judging skeleton alignment from
+  // six feet away.
+  const [panelOpen, setPanelOpen] = useState(true);
   const [healthText, setHealthText] = useState<string | null>(null);
 
   const [phase, setPhase] = useState<SessionPhase>('idle');
@@ -387,32 +393,68 @@ export function HarnessScreen() {
         )}
       </View>
 
-      <DebugReadout
-        snapshot={snapshot}
-        tracker={pipeline.latencyTracker}
-        expanded={appliedToggles.expandedReadout}
-      />
+      {/*
+        Floated over the preview rather than stacked beside it, and collapsible.
 
-      <SessionControls
-        phase={phase}
-        declaredExercise={declaredExercise}
-        plannedReps={plannedReps}
-        detectedReps={detectedReps}
-        calibrationProgress={snapshot.calibration.progress}
-        calibrationReject={snapshot.calibration.reject}
-        framingOk={snapshot.framing.inFrame}
-        busy={busy}
-        summaryText={summaryText}
-        deliveryText={deliveryText}
-        onSelectExercise={setDeclaredExercise}
-        onSelectPlanned={setPlannedReps}
-        onCalibrate={onCalibrate}
-        onStart={onStart}
-        onEnd={onEnd}
-        onSubmitActual={onSubmitActual}
-        onNewSession={onNewSession}
-        onMarker={onMarker}
-      />
+        Stacked, these two are content-sized siblings of a `flex: 1` preview, and in the
+        pre-session state they are tall — exercise chips, rep chips, prompts, buttons, plus the
+        expanded readout. Between them they took ~80% of the screen and the preview got the
+        remainder. That is not merely cramped: the Camera uses resizeMode="cover", so a preview box
+        that short crops the frame to a thin horizontal band through the middle of the sensor. You
+        cannot see your own body in it, most of the skeleton projects outside the box and is
+        clipped, and the framing guide has nothing to guide. The two things this harness exists to
+        let you judge by eye — does the skeleton track me, am I framed — were both impossible.
+
+        The overlay maths needs no change: makeProjector() in SkeletonOverlay already derives its
+        scale from the frame aspect against the box, so it stays correct now that the box is the
+        whole screen.
+      */}
+      <View style={styles.panel} pointerEvents="box-none">
+        <Pressable
+          style={styles.panelHandle}
+          onPress={() => setPanelOpen((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={panelOpen ? 'Hide controls' : 'Show controls'}
+        >
+          <Text style={styles.panelHandleText}>
+            {panelOpen ? '▾  hide controls' : '▴  show controls'}
+          </Text>
+          <Text style={styles.panelHandleStat}>
+            {snapshot.event.exercise} · {snapshot.event.phase} · {snapshot.event.repCount} reps
+          </Text>
+        </Pressable>
+
+        {panelOpen && (
+          <ScrollView style={styles.panelScroll} keyboardShouldPersistTaps="handled">
+            <DebugReadout
+              snapshot={snapshot}
+              tracker={pipeline.latencyTracker}
+              expanded={appliedToggles.expandedReadout}
+            />
+
+            <SessionControls
+              phase={phase}
+              declaredExercise={declaredExercise}
+              plannedReps={plannedReps}
+              detectedReps={detectedReps}
+              calibrationProgress={snapshot.calibration.progress}
+              calibrationReject={snapshot.calibration.reject}
+              framingOk={snapshot.framing.inFrame}
+              busy={busy}
+              summaryText={summaryText}
+              deliveryText={deliveryText}
+              onSelectExercise={setDeclaredExercise}
+              onSelectPlanned={setPlannedReps}
+              onCalibrate={onCalibrate}
+              onStart={onStart}
+              onEnd={onEnd}
+              onSubmitActual={onSubmitActual}
+              onNewSession={onNewSession}
+              onMarker={onMarker}
+            />
+          </ScrollView>
+        )}
+      </View>
 
       <SettingsSheet
         visible={settingsOpen}
@@ -434,7 +476,30 @@ export function HarnessScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#020617' },
+
+  // Fills the root. The control panel floats over it, so nothing competes for this space.
   preview: { flex: 1, backgroundColor: '#000' },
+
+  panel: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  panelHandle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(2,6,23,0.92)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#334155',
+  },
+  panelHandleText: { color: '#38bdf8', fontSize: 12, fontWeight: '700' },
+  panelHandleStat: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontVariant: ['tabular-nums'],
+  },
+  // Capped so the panel can never repeat the original mistake of crowding out the preview, and
+  // scrollable so nothing inside it becomes unreachable when it hits the cap.
+  panelScroll: { maxHeight: '58%', backgroundColor: 'rgba(2,6,23,0.94)' },
   center: {
     flex: 1,
     backgroundColor: '#020617',
@@ -463,9 +528,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   settingsButtonText: { color: '#cbd5e1', fontSize: 11, fontWeight: '700' },
+  // Top-anchored, and clear of the settings button. It used to sit at bottom:16, which was fine
+  // while the preview stopped above the controls — but the preview is now full-screen and the
+  // control panel floats over its lower edge, so the bottom is exactly where this would be
+  // covered up. Hiding the "plugin did not register" banner would be especially bad: that failure
+  // otherwise looks like a perfectly healthy app that simply never draws a skeleton.
   pluginError: {
     position: 'absolute',
-    bottom: 16,
+    top: 52,
     left: 12,
     right: 12,
     backgroundColor: 'rgba(127,29,29,0.92)',
