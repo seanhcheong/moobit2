@@ -348,8 +348,22 @@ export function HarnessScreen() {
           format={format}
           fps={configuredFps}
           isActive
-          // The Android plugin reads frame.image, which requires the YUV pixel format.
-          pixelFormat="yuv"
+          /*
+            Per-platform, because the two native plugins want opposite things and there is no
+            single value that satisfies both.
+              android: the plugin reads frame.image as YUV_420_888 planes and decimates them on
+                       the CPU (YuvDecimator.kt), so it needs 'yuv'.
+              ios:     the plugin hands the CMSampleBuffer straight to MPImage, and MediaPipe
+                       accepts only kCVPixelFormatType_32BGRA from a CVPixelBuffer. 'yuv' there
+                       fails per frame inside detectAsync with
+                         "Unsupported pixel format for CVPixelBuffer.
+                          Expected kCVPixelFormatType_32BGRA"
+                       which is a native NSLog, so it never reaches JS: the app looks healthy and
+                       simply never produces a landmark. VisionCamera maps 'rgb' to exactly
+                       32BGRA on iOS (CameraConfiguration.getPixelFormat), so the camera delivers
+                       what MediaPipe wants directly, with no per-frame conversion of ours.
+          */
+          pixelFormat={Platform.OS === 'ios' ? 'rgb' : 'yuv'}
           enableFpsGraph
           frameProcessor={frameProcessor}
         />

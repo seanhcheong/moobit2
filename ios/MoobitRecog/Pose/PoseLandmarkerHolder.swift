@@ -1,6 +1,25 @@
 import Foundation
 import MediaPipeTasksVision
 import CoreMedia
+import CoreVideo
+
+/// Renders an `OSType` as its four-character code, e.g. `BGRA` or `420f`.
+///
+/// Only used to make the pixel-format mismatch message below name what the camera actually sent.
+/// Not every OSType is a character code — some are small integers — so this falls back to hex
+/// rather than emitting control characters into a log line.
+private func fourCC(_ value: OSType) -> String {
+    let bytes = [
+        UInt8((value >> 24) & 0xFF),
+        UInt8((value >> 16) & 0xFF),
+        UInt8((value >> 8) & 0xFF),
+        UInt8(value & 0xFF),
+    ]
+    if bytes.allSatisfy({ $0 >= 0x20 && $0 < 0x7F }) {
+        return String(decoding: bytes, as: UTF8.self)
+    }
+    return "0x" + String(value, radix: 16)
+}
 
 /// Owns the MediaPipe Pose Landmarker and the single "latest result" slot the frame processor
 /// reads from. The iOS counterpart of `PoseLandmarkerHolder.kt`; the two are deliberately kept
@@ -130,6 +149,27 @@ final class PoseLandmarkerHolder: NSObject {
     func submit(sampleBuffer: CMSampleBuffer, orientation: UIImage.Orientation, captureMs: Double) -> Bool {
         lock.lock()
         guard let lm = landmarker else { lock.unlock(); return false }
+
+        // MediaPipe accepts only 32BGRA from a CVPixelBuffer, and its own rejection
+        // ("Unsupported pixel format for CVPixelBuffer") names the format it wanted but not the
+        // knob that selects it — which is in JS, in a different language and file, on the
+        // <Camera> component. Worse, it fires per frame and only into the Xcode console, so the
+        // app presents as healthy and merely never produces a landmark. Checking first turns that
+        // into one message that names the fix.
+        if let pb = CMSampleBufferGetImageBuffer(sampleBuffer) {
+            let fmt = CVPixelBufferGetPixelFormatType(pb)
+            if fmt != kCVPixelFormatType_32BGRA && fmt != kCVPixelFormatType_Lossy_32BGRA {
+                if lastError == nil {
+                    lastError =
+                        "camera is delivering \(fourCC(fmt)), MediaPipe requires 32BGRA on iOS — " +
+                        "set pixelFormat=\"rgb\" on <Camera> (Android needs \"yuv\")"
+                    NSLog("[PoseLandmarkerHolder] %@", lastError ?? "")
+                }
+                lock.unlock()
+                return false
+            }
+        }
+
         if inFlight {
             framesDropped += 1
             lock.unlock()
