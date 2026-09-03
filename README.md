@@ -51,7 +51,10 @@ repo — it needs a newer Xcode, which in turn may need a newer macOS.
 On the other end, Xcode 26 cannot compile the fmt version React Native 0.80.3 pins. `ios/Podfile`
 handles this by setting `RCT_USE_RN_DEP=1`, which pulls React Native's third-party C++
 dependencies as a prebuilt xcframework instead of building them here; see the comment there for
-why the alternatives don't work.
+why the alternatives don't work. That prebuilt path in turn needs
+`scripts/patch-rn-podspec.js`, which runs from `postinstall` and fixes a `cp` invocation in
+React Native's own unpacking script that only works under GNU cp, not macOS's. Without it
+`pod install` dies with `cp: framework/packages/react-native/..: File exists`.
 
 If `xcode-select -p` prints `/Library/Developer/CommandLineTools`, Xcode is installed but not
 active; the standalone Command Line Tools contain no iOS SDK. Fix with:
