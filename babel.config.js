@@ -16,14 +16,29 @@
  * ordinary Node functions — a `'worklet';` directive is an inert string expression to a plain JS
  * engine — so the transform is pure risk there with nothing to gain.
  *
- * ## The two legacy @babel/plugin-proposal-* devDependencies
- * worklets-core 1.6.3's plugin internally requires `@babel/plugin-proposal-optional-chaining` and
- * `@babel/plugin-proposal-nullish-coalescing-operator`, which Babel renamed to
- * `plugin-transform-*` and which RN 0.81's preset therefore no longer installs. worklets-core does
- * not declare them either, so without those two devDependencies the build fails with
- * "Cannot find module '@babel/plugin-proposal-optional-chaining'". This affects the real Android
- * and iOS builds, not only the tests. Remove them only once worklets-core stops asking for the
- * pre-rename names.
+ * ## The six @babel/* devDependencies nothing here imports
+ * worklets-core's `makeWorklet` re-enters Babel with `configFile: false, babelrc: false` and its
+ * own hardcoded list of one preset and five plugins, named as STRINGS which Babel then resolves
+ * against THIS package's node_modules. worklets-core declares none of them, so all six are
+ * silent dependencies of ours:
+ *
+ *   @babel/preset-typescript
+ *   @babel/plugin-transform-shorthand-properties
+ *   @babel/plugin-transform-arrow-functions
+ *   @babel/plugin-transform-template-literals
+ *   @babel/plugin-proposal-optional-chaining              <- pre-rename names; Babel now calls
+ *   @babel/plugin-proposal-nullish-coalescing-operator       these plugin-transform-*
+ *
+ * A missing one fails ONLY the real Android/iOS build, with e.g. "Cannot find module
+ * '@babel/preset-typescript'" — never the tests, since the `isTest` branch above removes the very
+ * plugin that would ask for it. __tests__/workletTransform.test.ts closes that gap by running
+ * this plugin over every `'worklet';` source in a child process with NODE_ENV unset, and by
+ * re-reading the list out of the installed plugin so an upgrade that adds a seventh name fails a
+ * test rather than someone's phone.
+ *
+ * Do not drop any of the six because `npm ls` shows it arriving anyway — four of them are
+ * hoisted transitives of @babel/preset-env, present by accident of npm's flat layout rather than
+ * by anyone's declaration.
  */
 const isTest = process.env.NODE_ENV === 'test' || process.env.BABEL_ENV === 'test';
 
