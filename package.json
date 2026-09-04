@@ -18,6 +18,7 @@
     "setup:android": "npm run model:download",
     "setup:xcodeproj": "bundle exec ruby scripts/setup-ios.rb",
     "replay": "tsx src/dev/replayCli.ts",
+    "diag": "tsx src/dev/diagnoseCli.ts",
     "probe:geometry": "tsx src/dev/probeGeometry.ts",
     "probe:signals": "tsx src/dev/probeSignals.ts",
     "probe:features": "tsx src/dev/probeFeatures.ts",
