@@ -62,13 +62,26 @@ export interface NativeFrameConfig {
    * Passed per frame rather than inferred natively. Wrong rotation on a floor-mounted portrait
    * phone produces plausible-looking but silently wrong joint angles, so this stays a value the
    * harness displays and can flip while watching the overlay.
+   *
+   * 90 is correct for a portrait phone, and measured on an iPhone 16 Pro front camera rather
+   * than assumed: the sensor delivers 1280x720 landscape buffers that need a quarter turn
+   * clockwise to stand upright. It was 0, which is wrong in two ways at once — MediaPipe saw a
+   * sideways image, AND the quarter turn swaps which axis is which, so coordinates were
+   * normalised against a 1.78 aspect instead of 0.56. The skeleton bore no relation to the body.
+   *
+   * A quarter turn is right for any phone held upright, so 90 is the correct default rather than
+   * a device-specific tweak. Landscape use would need 0 or 180, which is why the override stays.
+   * The robust version of this is to stop trusting a value from JS at all: VisionCamera's
+   * `Frame.orientation` is already a UIImageOrientation, exactly what MPImage wants, so the
+   * plugin can read the true orientation itself. That is a native change, so it waits for the
+   * next build rather than risking a working one.
    */
   rotationDegrees: number;
 }
 
 export const DEFAULT_NATIVE_FRAME: NativeFrameConfig = {
   targetLongEdge: 320,
-  rotationDegrees: 0,
+  rotationDegrees: 90,
 };
 
 /** Target the harness measures against, so the readout can flag a shortfall itself. */

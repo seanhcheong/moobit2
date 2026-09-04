@@ -39,7 +39,7 @@ export const DEFAULT_TOGGLES: HarnessToggles = {
   swapAnatomicalSides: false,
   latencyDefinition: 'STATE_AGE',
   targetLongEdge: 320,
-  rotationDegrees: 0,
+  rotationDegrees: 90,
 };
 
 export interface SettingsSheetProps {
